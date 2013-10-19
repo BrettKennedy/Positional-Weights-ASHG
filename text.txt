@@ -1,0 +1,40 @@
+Genome wide searches for disease causing variants are complicated by false positives.  The standard approach to reducing the incidence of false positives is to filter variants with low quality, removing them before they can be ranked by prioritization tools.  However, Hard filtering variants can introduce false negatives.  Here we show how incorporating location specific quality information into a variant prioritization tool, such as VAAST, can result in a dramatic increase in power for genome-wide variant searches, while avoiding the pitfalls of hard filtering.  In addition, we introduce a novel method for determining the site specific quality of a genomic location.
+
+To demonstrate the utility of positional weighting, genome-wide searches using VAAST were performed on exome sequence data for three unrelated individuals with known disease causing variants from HGMD "doped" into the genomes.  By using GATK's VQSR protocol and applying position specific VQSQLOD values to the VAAST calculation, a greater than 30% increase in power was observed in VAAST’s ability to correctly identify the spiked variants.  Our novel quality score, termed 'adjacency', allowed a power increase greater than 40%.  
+
+Both adjacency values and VQSLOD scores produced by the VQSR procedure are position specific weights that can be used in genome wide searches to dramatically increase power.  
+
+
+
+Materials and Methods
+
+All benchmarks were done on the combined exome data of 3 healthy, unrelated individuals.  We spiked known disease causing variants from the HGMD database into the combined exome data and then used VAAST to search for the spiked variants.  We spiked variants into 100 genes and then recorded their ranks as judged by VAAST.  The VQSR procedure in the GATK pipeline was used to compute VQSLOD scores, which were multiplied with the VAAST likelihood to weight the variant site.  Adjacency values were computed by using Bowtie2 to align each read from the exome sequence data up to 10 distinct times.  The adjacency scores are computed by allowing reads to align up to 10 valid, distinct genomic locations and then counting the number of times a base pair location in the genome is represented by reads that map to multiple locations.  The following simple figure shows how adjacency values are calculated:
+
+In this simple case each base pair under the read would have an adjacency value of two.  The VAAST likelihood was multiplied by the percentile rank of the adjacency value to weight the variant site.  
+
+Results
+
+Figure 1 shows the distribution of VAAST rankings for 1, 2, and 3 small individual exome for 100 different genes with spiked HGMD variants.  The first 3 columns labeled 1, 2, 3 include SNVs only in both the target and background.  In addition, the exome datasets are relatively small in size.  The column 3+ represents SNV only exome data in 3 unrelated individuals, but this variant set contains many more variants than the first three.  Figure 1 clearly shows a decrease in VAAST’s ability to reliably rank disease causing genes with increasing size and complexity of variant datasets.  
+
+Figure 2 shows that indels further decrease the performance of VAAST.  The column labeled INDEL contains the same data as the 3+ column in Figure 1, except the data and spiked variants now include indels.  Furthermore, Figure 2 demonstrates the impact of position specific weighting on the ability of VAAST to reliably rank genes that contain disease causing variants.   
+
+By multiplying the VQSLOD scores into the VAAST likelihood, much of the performance that was lost by the introduction of indels is recovered.  By multiplying adjacency scores into the VAAST likelihood, an additional 10% increase in power was observed
+
+Discussion and Conclusions
+
+Both VQSLOD scores and adjacency values are useful for increasing the power of genome wide searches for disease causing variants.  By applying the location specific quality values to each variant, rather than hard filtering on quality, the confidence of a variant being "true" is accounted for in VAAST prioritization.  VQSR and adjacency values are dataset and genome location specific and thus provide a precise way to weight VAAST searches through a simple multiplication into the VAAST likelihood.  
+
+VQSLOD scores are obtained by using the VQSR procedure in the GATK pipeline.  VQSLOD scores represent the log odds ratio of being a true variant vs a false variant; it is calculated by using a gaussian mixture model that is trained using the datasets dbSNP, HapMap, and 1KG.  This model looks at relationships between different variant quality metrics in the different datasets to identify true or false variants.  
+
+Adjacency values are based on the idea that not all locations in the human genome are equally mappable.  Lee and Schatz used the term “genomic dark matter” to refer to regions of the genome that are unmappable.  By simulating reads from HG19 and then aligning them back, they were able to compute probabilities that any position in the genome can be accurately mapped.  The shortcoming of this approach is that simulated data behaves quite differently from real read data and we found their computed probabilities to not be effective as weights in genome wide searches for disease causing variants.  However, by using real reads from the individuals whose genomes we searched to compute adjacency values, we observed a dramatic increase in power when this information was used in VAAST searches.
+
+These results demonstrate the power of position specific weighting in genome wide search for diesease causing variants.  In addition, we found that dataset specific weights are more powerful than generic weights based on genome reference characteristics.  
+
+
+DePristo MA, et al. A framework for variation discovery and genotyping using next-generation DNA sequencing data. Nat Genet. 2011 May;43(5):491-8.
+
+Yandell M, et al. A probabilistic disease-gene finder for personal genomes. Genome Res. 2011 Sep;21(9):1529-42
+
+Lee H, Schatz MC. Genomic dark matter: the reliability of short read mapping illustrated by the genome mappability score. Bioinformatics. 2012 Aug 15;28(16):2097-105.
+
+Langmead B, Salzberg SL. Fast gapped-read alignment with Bowtie 2. Nat Methods. 2012 Mar 4;9(4):357-9.
